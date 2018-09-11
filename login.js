@@ -31,7 +31,6 @@ exports.login = function(callback) {
   prompt.start();
   prompt.get(schema, function(err, result) {
     if(err) throw err;
-    var result = {'eid': 'rbc855', 'password': '8675309!A'};
     loginOptions.form.IDToken1 = result.eid;
     loginOptions.form.IDToken2 = result.password;
 
