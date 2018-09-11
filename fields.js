@@ -1,48 +1,61 @@
 const request = require('request');
 const cheerio = require('cheerio');
 const sessioninfo = require('./sessioninfo.js');
-
-//https://utdirect.utexas.edu/apps/registrar/course_schedule/20189/
+const entities = require('html-entities');
 
 const login = require('./login.js');
 
-function scrape(prodid, ccyys) {
+let fields = [];
+
+function processMainPage($, callback) {
+  $("#fos_cn > option").each(function(i, el) {
+    let e = $(el);
+    if(e.attr("value") != "") {
+      fields.push([e.attr("value"), e.text()]);
+    }
+  });
+  console.log(fields);
+}
+
+function scrape(ccyys, callback) {
   request.get({
-    url: 'https://utdirect.utexas.edu/apps/registrar/course_schedule/20189/',
+    url: 'https://utdirect.utexas.edu/apps/registrar/course_schedule/' + ccyys + '/',
     jar: login.jar
   }, function(err, data) {
-    if(err) return err;
-    console.log(data);
+    if(err) throw err;
+
+    const $ = cheerio.load(data['body']);
+    let lares = $("input[name=LARES]").attr('value');
+    let action = $("form").attr('action');
+
+    request.post({
+      url: action,
+      jar: login.jar,
+      form: {
+        LARES: lares
+      }
+    }, function(err2, data2) {
+      if(err2) throw err2;
+
+      request.get({
+        url: 'https://utdirect.utexas.edu/apps/registrar/course_schedule/' + ccyys + '/',
+        jar: login.jar
+      }, function(err3, data3) {
+        if(err3) throw err3;
+
+        processMainPage(cheerio.load(data3['body']), callback);
+      });
+    });
   });
 }
 
 exports.get = function(callback) {
-  request.get({
-    url: 'https://utdirect.utexas.edu/apps/registrar/course_schedule/20189/',
-    jar: login.jar
-  }, function(err, data) {
-    if(err) return err;
-    console.log("Fetched one");
-    request.get({
-      url: 'https://login.utexas.edu/login/cdcservlet?goto=https%3A%2F%2Futdirect.utexas.edu%3A443%2Fapps%2Fregistrar%2Fcourse_schedule%2F20189%2F&RequestID=1536628690440&MajorVersion=1&MinorVersion=0&ProviderID=https%3A%2F%2Futdirect.utexas.edu%3A443%2Famagent%3FRealm%3D%2Fadmin%2Futdirect-realm&IssueInstant=2018-09-11T01%3A18%3A10Z',
-      jar: login.jar
-    }, function(err, data) {
-      if(err) return err;
-      console.log("Fetched two");
-      request.get({
-        url: 'https://utdirect.utexas.edu/apps/registrar/course_schedule/20189/',
-        jar: login.jar
-      }, function(err, data) {
-        if(err) return err;
-        console.log(data);
-      });
-    });
-  });
+  scrape(sessioninfo.fetchCcyys(), callback);
 };
 
 //If this is the main module being run, go through login prompt.
 if (require.main === module) {
   login.login(() => {
-    setTimeout(function() {exports.get();}, 2000);
+    exports.get();
   });
 }
