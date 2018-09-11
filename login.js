@@ -41,13 +41,14 @@ exports.login = function(callback) {
       let cookies = jar.getCookies("https://login.utexas.edu/");
       exports.jar = jar;
 
-      console.log(result.headers['set-cookie']);
+      //console.log(result.headers['set-cookie']);
 
       /*setTimeout(function() {
         request.get({jar: jar, url: 'https://utdirect.utexas.edu/apps/registrar/course_schedule/20189/'}, function(err, result) {
           console.log(result);
         });
       }, 1000);*/
+      callback();
     });
   });
 };
